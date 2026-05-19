@@ -58,10 +58,10 @@ class ReservationJdbcRepositoryTest {
     }
 
     @Test
-    @DisplayName("사용자 이름으로 예약 목록을 조회한다.")
-    void findByUsernameTest() {
+    @DisplayName("사용자 ID로 예약 목록을 조회한다.")
+    void findByUserIdTest() {
         // when
-        List<Reservation> reservations = reservationRepository.findByUsername("흑곰");
+        List<Reservation> reservations = reservationRepository.findByUserId(1L);
 
         // then
         assertThat(reservations).hasSize(1);

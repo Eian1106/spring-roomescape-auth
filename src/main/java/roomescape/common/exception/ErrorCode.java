@@ -13,7 +13,8 @@ public enum ErrorCode {
     RESERVATION_TIME_DELETE_CONFLICT(HttpStatus.CONFLICT, "RESERVATION_TIME_DELETE_CONFLICT", "예약이 존재하는 시간은 삭제할 수 없습니다."),
     PAST_DATE_RESERVATION(HttpStatus.BAD_REQUEST, "PAST_DATE_RESERVATION", "과거 날짜로 예약할 수 없습니다."),
     DUPLICATE_RESERVATION(HttpStatus.CONFLICT, "DUPLICATE_RESERVATION", "이미 예약된 시간입니다."),
-    RESERVATION_OWNER_MISMATCH(HttpStatus.FORBIDDEN, "RESERVATION_OWNER_MISMATCH", "본인의 예약만 취소할 수 있습니다.");
+    RESERVATION_OWNER_MISMATCH(HttpStatus.FORBIDDEN, "RESERVATION_OWNER_MISMATCH", "본인의 예약만 취소할 수 있습니다."),
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다.");
 
     private final HttpStatus status;
     private final String code;

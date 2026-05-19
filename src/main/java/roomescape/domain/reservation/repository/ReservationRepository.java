@@ -9,7 +9,7 @@ public interface ReservationRepository {
 
     List<Reservation> findAll();
 
-    List<Reservation> findByUsername(String username);
+    List<Reservation> findByUserId(Long userId);
 
     Optional<Reservation> findById(Long id);
 

@@ -21,6 +21,7 @@ import roomescape.domain.time.entity.ReservationTime;
 import roomescape.domain.time.exception.ReservationTimeNotFoundException;
 import roomescape.domain.time.repository.ReservationTimeRepository;
 import roomescape.domain.time.response.ReservationTimeResponse;
+import roomescape.domain.user.entity.User;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -248,20 +249,21 @@ class ReservationServiceTest {
     }
 
     @Test
-    @DisplayName("사용자 이름으로 예약 목록을 조회한다.")
-    void findReservationsByUsername() {
+    @DisplayName("로그인 사용자 기준으로 예약 목록을 조회한다.")
+    void findReservationsByUser() {
         // given
         String username = "브라운";
+        User user = new User(1L, username, "brown@example.com", "password");
         Theme theme = new Theme(1L, "theme1", "description1", "thumbnail url 1");
         ReservationTime time = new ReservationTime(1L, LocalTime.of(10, 0));
         List<Reservation> reservations = List.of(
-                new Reservation(1L, username, theme, LocalDate.of(2026, 4, 30), time)
+                new Reservation(1L, username, user.getId(), theme, LocalDate.of(2026, 4, 30), time)
         );
 
-        when(reservationRepository.findByUsername(username)).thenReturn(reservations);
+        when(reservationRepository.findByUserId(user.getId())).thenReturn(reservations);
 
         // when
-        List<ReservationResponse> responses = reservationService.findReservationsByUsername(username);
+        List<ReservationResponse> responses = reservationService.findReservationsByUser(user);
 
         // then
         assertThat(responses).hasSize(1)
@@ -275,7 +277,7 @@ class ReservationServiceTest {
                         )
                 );
 
-        verify(reservationRepository).findByUsername(username);
+        verify(reservationRepository).findByUserId(user.getId());
     }
 
     @Test

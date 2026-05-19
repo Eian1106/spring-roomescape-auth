@@ -38,6 +38,10 @@ INSERT INTO theme (name, description, thumbnail_url) VALUES
 INSERT INTO theme (name, description, thumbnail_url) VALUES
     ('시간 여행자', '뒤엉킨 시간선을 정리하고 원래의 현재로 돌아와야 합니다.', 'https://images.unsplash.com/photo-1501139083538-0139583c060f?auto=format&fit=crop&w=900&q=80');
 
+INSERT INTO users (username, email, password) VALUES ('도윤', 'doyun@example.com', 'password');
+INSERT INTO users (username, email, password) VALUES ('민준', 'minjun@example.com', 'password');
+INSERT INTO users (username, email, password) VALUES ('서연', 'seoyeon@example.com', 'password');
+
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('민준', 1, '2026-04-30', 1);
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('서연', 1, '2026-04-30', 3);
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('도윤', 2, '2026-04-30', 5);
@@ -123,3 +127,7 @@ INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('시현', 10
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('은채', 11, '2026-05-01', 5);
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('예찬', 3, '2026-05-04', 8);
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('윤하', 4, '2026-05-03', 8);
+
+UPDATE reservation SET user_id = (SELECT id FROM users WHERE email = 'doyun@example.com') WHERE username = '도윤';
+UPDATE reservation SET user_id = (SELECT id FROM users WHERE email = 'minjun@example.com') WHERE username = '민준';
+UPDATE reservation SET user_id = (SELECT id FROM users WHERE email = 'seoyeon@example.com') WHERE username = '서연';

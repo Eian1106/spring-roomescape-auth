@@ -17,6 +17,7 @@ import roomescape.domain.theme.repository.ThemeRepository;
 import roomescape.domain.time.entity.ReservationTime;
 import roomescape.domain.time.exception.ReservationTimeNotFoundException;
 import roomescape.domain.time.repository.ReservationTimeRepository;
+import roomescape.domain.user.entity.User;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -49,8 +50,8 @@ public class ReservationService {
                 .toList();
     }
 
-    public List<ReservationResponse> findReservationsByUsername(String username) {
-        return reservationRepository.findByUsername(username).stream()
+    public List<ReservationResponse> findReservationsByUser(User user) {
+        return reservationRepository.findByUserId(user.getId()).stream()
                 .map(ReservationResponse::from)
                 .toList();
     }
@@ -67,6 +68,33 @@ public class ReservationService {
 
         Reservation reservation = new Reservation(
                 request.username(),
+                theme,
+                request.date(),
+                time
+        );
+
+        if (reservationRepository.exists(reservation)) {
+            throw new DuplicateReservationException();
+        }
+
+        Reservation savedReservation = reservationRepository.save(reservation);
+
+        return ReservationResponse.from(savedReservation);
+    }
+
+    @Transactional
+    public ReservationResponse saveReservation(User user, ReservationCreateRequest request) {
+        ReservationTime time = reservationTimeRepository.findById(request.timeId())
+                .orElseThrow(ReservationTimeNotFoundException::new);
+
+        validateReservationDateTimeIsNotPast(request.date(), time);
+
+        Theme theme = themeRepository.findById(request.themeId())
+                .orElseThrow(ThemeNotFoundException::new);
+
+        Reservation reservation = new Reservation(
+                user.getUsername(),
+                user.getId(),
                 theme,
                 request.date(),
                 time

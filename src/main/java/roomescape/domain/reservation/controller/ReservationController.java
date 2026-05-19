@@ -3,11 +3,13 @@ package roomescape.domain.reservation.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import roomescape.common.auth.LoginUser;
 import roomescape.domain.reservation.request.ReservationCreateRequest;
 import roomescape.domain.reservation.request.ReservationUpdateRequest;
 import roomescape.domain.reservation.response.ReservationResponse;
 import roomescape.domain.reservation.response.ReservationsResponse;
 import roomescape.domain.reservation.service.ReservationService;
+import roomescape.domain.user.entity.User;
 
 import java.net.URI;
 import java.util.List;
@@ -23,14 +25,17 @@ public class ReservationController {
     }
 
     @GetMapping
-    public ResponseEntity<ReservationsResponse> findByUsername(@RequestParam String username) {
-        List<ReservationResponse> reservations = reservationService.findReservationsByUsername(username);
+    public ResponseEntity<ReservationsResponse> findMine(@LoginUser User loginUser) {
+        List<ReservationResponse> reservations = reservationService.findReservationsByUser(loginUser);
         return ResponseEntity.ok(new ReservationsResponse(reservations));
     }
 
     @PostMapping
-    public ResponseEntity<ReservationResponse> save(@Valid @RequestBody ReservationCreateRequest request) {
-        ReservationResponse response = reservationService.saveReservation(request);
+    public ResponseEntity<ReservationResponse> save(
+            @LoginUser User loginUser,
+            @Valid @RequestBody ReservationCreateRequest request
+    ) {
+        ReservationResponse response = reservationService.saveReservation(loginUser, request);
         return ResponseEntity.created(URI.create("/reservations/" + response.id()))
                 .body(response);
     }

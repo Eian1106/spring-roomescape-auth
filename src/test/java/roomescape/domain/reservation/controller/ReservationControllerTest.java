@@ -47,10 +47,12 @@ class ReservationControllerTest {
     }
 
     @Test
-    @DisplayName("사용자는 이름으로 본인의 예약 목록을 조회한다.")
-    void findReservationsByUsername() {
+    @DisplayName("로그인한 사용자는 본인의 예약 목록을 조회한다.")
+    void findReservationsByLoginUser() {
+        String sessionId = login("bear@example.com", "password");
+
         RestAssured.given().log().all()
-                .queryParam("username", "흑곰")
+                .cookie("JSESSIONID", sessionId)
                 .when().get("/reservations")
                 .then().log().all()
                 .statusCode(200)
@@ -67,8 +69,10 @@ class ReservationControllerTest {
     }
 
     @Test
-    @DisplayName("예약을 생성한다.")
+    @DisplayName("로그인한 사용자를 기준으로 예약을 생성한다.")
     void createReservation() {
+        String sessionId = login("bear@example.com", "password");
+
         Map<String, Object> params = new HashMap<>();
         params.put("username", "새로운 사용자");
         params.put("themeId", 3);
@@ -76,6 +80,7 @@ class ReservationControllerTest {
         params.put("timeId", 6);
 
         RestAssured.given().log().all()
+                .cookie("JSESSIONID", sessionId)
                 .contentType(ContentType.JSON)
                 .body(params)
                 .when().post("/reservations")
@@ -83,7 +88,7 @@ class ReservationControllerTest {
                 .statusCode(201)
                 .header("Location", notNullValue())
                 .body("id", notNullValue())
-                .body("username", is("새로운 사용자"))
+                .body("username", is("흑곰"))
                 .body("theme.id", is(3))
                 .body("theme.name", is("우주 정거장"))
                 .body("theme.description", is("우주에서 살아남으세요."))
@@ -91,6 +96,21 @@ class ReservationControllerTest {
                 .body("date", is("9999-05-08"))
                 .body("time.id", is(6))
                 .body("time.startAt", is("15:00"));
+    }
+
+    private String login(String email, String password) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("email", email);
+        params.put("password", password);
+
+        return RestAssured.given().log().all()
+                .contentType(ContentType.JSON)
+                .body(params)
+                .when().post("/login")
+                .then().log().all()
+                .statusCode(200)
+                .extract()
+                .cookie("JSESSIONID");
     }
 
     @Test

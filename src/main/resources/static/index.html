@@ -20,8 +20,9 @@
         <button class="tab" data-view="api">API</button>
     </nav>
     <div class="user-menu">
-        <span id="currentUsernameLabel">사용자 미설정</span>
-        <button id="changeUserButton" class="secondary-button compact-button" type="button">이름 변경</button>
+        <span id="currentUserLabel">로그인 필요</span>
+        <button id="openLoginButton" class="secondary-button compact-button" type="button">로그인</button>
+        <button id="logoutButton" class="danger-button compact-button hidden" type="button">로그아웃</button>
     </div>
 </header>
 
@@ -51,10 +52,6 @@
 
         <form id="reservationForm" class="booking-layout">
             <aside class="control-panel">
-                <label>
-                    예약자 이름
-                    <input id="usernameInput" name="username" type="text" autocomplete="name" placeholder="이름" required>
-                </label>
                 <label>
                     예약 날짜
                     <input id="dateInput" name="date" type="date" required>
@@ -155,12 +152,8 @@
         </div>
 
         <div class="api-grid">
-            <form class="api-panel" data-api-form="GET" data-api-path="/reservations?username={username}">
+            <form class="api-panel" data-api-form="GET" data-api-path="/reservations">
                 <h3>본인 예약 목록 조회</h3>
-                <label>
-                    username
-                    <input name="username" type="text" value="도윤" required>
-                </label>
                 <button class="secondary-button" type="submit">GET /reservations</button>
             </form>
 
@@ -194,10 +187,6 @@
 
             <form class="api-panel" data-api-form="POST" data-api-path="/reservations">
                 <h3>예약 생성</h3>
-                <label>
-                    username
-                    <input name="username" type="text" value="도윤" required>
-                </label>
                 <label>
                     themeId
                     <input name="themeId" type="number" value="1" min="1" required>
@@ -307,10 +296,6 @@
             <form class="api-panel error-panel" data-api-form="POST" data-api-path="/reservations">
                 <h3>에러: 존재하지 않는 시간</h3>
                 <label>
-                    username
-                    <input name="username" type="text" value="도윤" required>
-                </label>
-                <label>
                     themeId
                     <input name="themeId" type="number" value="1" min="1" required>
                 </label>
@@ -349,10 +334,6 @@
             <form class="api-panel error-panel" data-api-form="POST" data-api-path="/reservations">
                 <h3>에러: 잘못된 날짜 형식</h3>
                 <label>
-                    username
-                    <input name="username" type="text" value="도윤" required>
-                </label>
-                <label>
                     themeId
                     <input name="themeId" type="number" value="1" min="1" required>
                 </label>
@@ -381,17 +362,41 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<div id="userDialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="userDialogTitle">
-    <form id="userForm" class="dialog-panel">
-        <p class="eyebrow">User</p>
-        <h2 id="userDialogTitle">예약자 이름을 입력하세요.</h2>
-        <p>입력한 이름으로 본인의 예약을 조회하고 변경할 수 있습니다.</p>
-        <label>
-            예약자 이름
-            <input id="currentUsernameInput" name="username" type="text" autocomplete="name" placeholder="도윤" required>
-        </label>
-        <button class="primary-button" type="submit">시작하기</button>
-    </form>
+<div id="loginDialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="loginDialogTitle">
+    <section class="dialog-panel">
+        <p class="eyebrow">Login</p>
+        <h2 id="loginDialogTitle">로그인</h2>
+        <div class="auth-tabs" role="tablist" aria-label="인증 방식">
+            <button id="loginModeButton" class="auth-tab active" type="button">로그인</button>
+            <button id="signupModeButton" class="auth-tab" type="button">회원가입</button>
+        </div>
+        <form id="loginForm" class="auth-form active-auth-form">
+            <label>
+                이메일
+                <input id="loginEmailInput" name="email" type="email" autocomplete="email" placeholder="doyun@example.com" required>
+            </label>
+            <label>
+                비밀번호
+                <input name="password" type="password" autocomplete="current-password" placeholder="password" required>
+            </label>
+            <button class="primary-button" type="submit">로그인</button>
+        </form>
+        <form id="signupForm" class="auth-form">
+            <label>
+                이름
+                <input name="username" type="text" autocomplete="name" placeholder="도윤" required>
+            </label>
+            <label>
+                이메일
+                <input name="email" type="email" autocomplete="email" placeholder="doyun@example.com" required>
+            </label>
+            <label>
+                비밀번호
+                <input name="password" type="password" autocomplete="new-password" placeholder="password" required>
+            </label>
+            <button class="primary-button" type="submit">회원가입</button>
+        </form>
+    </section>
 </div>
 
 <div id="apiResponseDialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="apiResponseTitle">

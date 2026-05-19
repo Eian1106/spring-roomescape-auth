@@ -5,7 +5,8 @@ const state = {
     selectedThemeId: null,
     selectedTimeId: null,
     reservationSort: "date",
-    currentUsername: localStorage.getItem("roomescape.username") || "",
+    currentUserEmail: localStorage.getItem("roomescape.email") || "",
+    loggedIn: localStorage.getItem("roomescape.loggedIn") === "true",
     editingReservationId: null,
 };
 
@@ -22,7 +23,7 @@ const $ = (selector) => document.querySelector(selector);
 
 document.addEventListener("DOMContentLoaded", async () => {
     $("#dateInput").value = new Date().toISOString().slice(0, 10);
-    hydrateUser();
+    renderAuthState();
     renderPopularPeriod();
     bindEvents();
     await loadAll();
@@ -34,8 +35,12 @@ function bindEvents() {
     });
 
     $("#dateInput").addEventListener("change", loadThemeTimes);
-    $("#userForm").addEventListener("submit", saveCurrentUsername);
-    $("#changeUserButton").addEventListener("click", openUserDialog);
+    $("#loginForm").addEventListener("submit", login);
+    $("#signupForm").addEventListener("submit", signup);
+    $("#loginModeButton").addEventListener("click", () => switchAuthMode("login"));
+    $("#signupModeButton").addEventListener("click", () => switchAuthMode("signup"));
+    $("#openLoginButton").addEventListener("click", openLoginDialog);
+    $("#logoutButton").addEventListener("click", logout);
     $("#closeApiDialogButton").addEventListener("click", closeApiResponseDialog);
     $("#apiResponseDialog").addEventListener("click", (event) => {
         if (event.target.id === "apiResponseDialog") {
@@ -82,7 +87,9 @@ async function api(path, options = {}) {
         } catch (ignore) {
             message = `${response.status} ${response.statusText}`;
         }
-        throw new Error(message);
+        const apiError = new Error(message);
+        apiError.status = response.status;
+        throw apiError;
     }
 
     if (response.status === 204) {
@@ -118,17 +125,21 @@ async function loadTimes() {
 }
 
 async function loadReservations() {
-    if (!state.currentUsername) {
+    if (!state.loggedIn) {
         state.reservations = [];
         renderReservations();
         return;
     }
 
     try {
-        const data = await api(`/reservations?username=${encodeURIComponent(state.currentUsername)}`);
+        const data = await api("/reservations");
         state.reservations = data.reservations || [];
         renderReservations();
     } catch (error) {
+        if (error.status === 401) {
+            clearLoginState();
+            renderAuthState();
+        }
         showToast(error.message);
     }
 }
@@ -242,13 +253,13 @@ function renderPopularPeriod() {
 }
 
 function renderReservations() {
-    if (!state.currentUsername) {
-        $("#reservationList").innerHTML = emptyState("예약자 이름을 먼저 입력하세요.");
+    if (!state.loggedIn) {
+        $("#reservationList").innerHTML = emptyState("로그인 후 예약 내역을 확인하세요.");
         return;
     }
 
     if (state.reservations.length === 0) {
-        $("#reservationList").innerHTML = emptyState(`${state.currentUsername}님의 예약 내역이 없습니다.`);
+        $("#reservationList").innerHTML = emptyState("예약 내역이 없습니다.");
         return;
     }
 
@@ -366,8 +377,13 @@ async function createReservation(event) {
     event.preventDefault();
 
     const form = event.currentTarget;
-    const username = state.currentUsername || $("#usernameInput").value.trim();
     const date = $("#dateInput").value;
+
+    if (!state.loggedIn) {
+        openLoginDialog();
+        showToast("로그인 후 예약할 수 있습니다.");
+        return;
+    }
 
     if (!state.selectedThemeId || !state.selectedTimeId) {
         showToast("테마와 시간을 선택하세요.");
@@ -378,7 +394,6 @@ async function createReservation(event) {
         await api("/reservations", {
             method: "POST",
             body: JSON.stringify({
-                username,
                 themeId: state.selectedThemeId,
                 date,
                 timeId: state.selectedTimeId,
@@ -386,7 +401,6 @@ async function createReservation(event) {
         });
         form.reset();
         $("#dateInput").value = date;
-        $("#usernameInput").value = username;
         showToast("예약이 완료되었습니다.");
         await Promise.all([loadReservations(), loadThemeTimes(), loadPopularThemes()]);
     } catch (error) {
@@ -433,8 +447,15 @@ async function createTime(event) {
 }
 
 async function deleteReservation(id) {
+    const reservation = state.reservations.find((item) => String(item.id) === String(id));
+    const username = reservation?.username;
+    if (!username) {
+        showToast("예약자 정보를 찾지 못했습니다.");
+        return;
+    }
+
     try {
-        await api(`/reservations/${id}?username=${encodeURIComponent(state.currentUsername)}`, {method: "DELETE"});
+        await api(`/reservations/${id}?username=${encodeURIComponent(username)}`, {method: "DELETE"});
         showToast("예약이 취소되었습니다.");
         await Promise.all([loadReservations(), loadThemeTimes(), loadPopularThemes()]);
     } catch (error) {
@@ -447,10 +468,17 @@ async function updateReservationSchedule(event) {
 
     const form = event.currentTarget;
     const reservationId = form.dataset.reservationUpdate;
+    const reservation = state.reservations.find((item) => String(item.id) === String(reservationId));
+    const username = reservation?.username;
+    if (!username) {
+        showToast("예약자 정보를 찾지 못했습니다.");
+        return;
+    }
+
     const formData = new FormData(form);
 
     try {
-        await api(`/reservations/${reservationId}?username=${encodeURIComponent(state.currentUsername)}`, {
+        await api(`/reservations/${reservationId}?username=${encodeURIComponent(username)}`, {
             method: "PATCH",
             body: JSON.stringify({
                 date: formData.get("date"),
@@ -609,47 +637,108 @@ async function refreshAfterApiCall(method) {
     ]);
 }
 
-function hydrateUser() {
-    if (state.currentUsername) {
-        applyCurrentUsername(state.currentUsername);
-        closeUserDialog();
-        return;
-    }
+async function login(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
-    openUserDialog();
+    try {
+        await api("/login", {
+            method: "POST",
+            body: JSON.stringify({
+                email: formData.get("email"),
+                password: formData.get("password"),
+            }),
+        });
+        setLoginState(formData.get("email"));
+        closeLoginDialog();
+        showToast("로그인되었습니다.");
+        await loadReservations();
+    } catch (error) {
+        showToast(error.message);
+    }
 }
 
-function saveCurrentUsername(event) {
+async function signup(event) {
     event.preventDefault();
 
-    const username = $("#currentUsernameInput").value.trim();
+    const formData = new FormData(event.currentTarget);
+    const username = String(formData.get("username") || "").trim();
+
     if (!username) {
-        showToast("예약자 이름을 입력하세요.");
+        showToast("회원가입할 이름을 입력하세요.");
         return;
     }
 
-    localStorage.setItem("roomescape.username", username);
-    applyCurrentUsername(username);
-    closeUserDialog();
-    loadReservations();
+    try {
+        await api("/signup", {
+            method: "POST",
+            body: JSON.stringify({
+                username,
+                email: formData.get("email"),
+                password: formData.get("password"),
+            }),
+        });
+        showToast("회원가입이 완료되었습니다. 로그인하세요.");
+        switchAuthMode("login");
+        $("#loginEmailInput").value = formData.get("email");
+    } catch (error) {
+        showToast(error.message);
+    }
 }
 
-function applyCurrentUsername(username) {
-    state.currentUsername = username;
-    $("#currentUsernameLabel").textContent = `${username}님`;
-    $("#currentUsernameInput").value = username;
-    $("#usernameInput").value = username;
-    $("#usernameInput").readOnly = true;
+async function logout() {
+    try {
+        await api("/logout", {method: "POST"});
+    } catch (ignore) {
+    }
+
+    clearLoginState();
+    renderAuthState();
+    state.reservations = [];
+    renderReservations();
+    showToast("로그아웃되었습니다.");
 }
 
-function openUserDialog() {
-    $("#currentUsernameInput").value = state.currentUsername || "";
-    $("#userDialog").classList.add("show");
-    $("#currentUsernameInput").focus();
+function setLoginState(email) {
+    state.loggedIn = true;
+    state.currentUserEmail = email;
+    localStorage.setItem("roomescape.loggedIn", "true");
+    localStorage.setItem("roomescape.email", email);
+    renderAuthState();
 }
 
-function closeUserDialog() {
-    $("#userDialog").classList.remove("show");
+function clearLoginState() {
+    state.loggedIn = false;
+    state.currentUserEmail = "";
+    localStorage.removeItem("roomescape.loggedIn");
+    localStorage.removeItem("roomescape.email");
+}
+
+function renderAuthState() {
+    $("#currentUserLabel").textContent = state.loggedIn
+        ? state.currentUserEmail || "로그인됨"
+        : "로그인 필요";
+    $("#openLoginButton").classList.toggle("hidden", state.loggedIn);
+    $("#logoutButton").classList.toggle("hidden", !state.loggedIn);
+}
+
+function openLoginDialog() {
+    switchAuthMode("login");
+    $("#loginDialog").classList.add("show");
+    $("#loginEmailInput").focus();
+}
+
+function closeLoginDialog() {
+    $("#loginDialog").classList.remove("show");
+}
+
+function switchAuthMode(mode) {
+    const isLogin = mode === "login";
+    $("#loginModeButton").classList.toggle("active", isLogin);
+    $("#signupModeButton").classList.toggle("active", !isLogin);
+    $("#loginForm").classList.toggle("active-auth-form", isLogin);
+    $("#signupForm").classList.toggle("active-auth-form", !isLogin);
 }
 
 function openApiResponseDialog() {

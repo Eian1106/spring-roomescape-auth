@@ -16,6 +16,9 @@ INSERT INTO reservation_time (start_at) VALUES ('13:00');
 INSERT INTO reservation_time (start_at) VALUES ('14:00');
 INSERT INTO reservation_time (start_at) VALUES ('15:00');
 
+INSERT INTO users (username, email, password) VALUES ('흑곰', 'bear@example.com', 'password');
+INSERT INTO users (username, email, password) VALUES ('브라운', 'brown@example.com', 'password');
+
 -- 2026-05-05에 '워너비'(ID 1) 테마 예약 (집계 대상)
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('흑곰', 1, '2026-05-05', 1);
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('카키', 1, '2026-05-05', 2);
@@ -36,3 +39,6 @@ INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('로치', 1,
 -- 2026-05-07에 '공포의 지하실'(ID 2) 테마 예약 (집계 제외)
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('이안', 2, '2026-05-07', 2);
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('스타크', 2, '2026-05-07', 4);
+
+UPDATE reservation SET user_id = (SELECT id FROM users WHERE email = 'bear@example.com') WHERE username = '흑곰';
+UPDATE reservation SET user_id = (SELECT id FROM users WHERE email = 'brown@example.com') WHERE username = '브라운';

@@ -14,14 +14,27 @@ CREATE TABLE theme
     PRIMARY KEY (id)
 );
 
+CREATE TABLE users
+(
+    id       BIGINT       NOT NULL AUTO_INCREMENT,
+    username VARCHAR(255) NOT NULL,
+    email    VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE reservation
 (
     id       BIGINT       NOT NULL AUTO_INCREMENT,
     username     VARCHAR(255) NOT NULL,
+    user_id BIGINT,
     theme_id BIGINT       NOT NULL,
     date     DATE         NOT NULL,
     time_id  BIGINT       NOT NULL,
     PRIMARY KEY (id),
+    FOREIGN KEY (user_id) REFERENCES users (id)
+        ON DELETE RESTRICT
+        ON UPDATE RESTRICT,
     FOREIGN KEY (time_id) REFERENCES reservation_time (id)
         ON DELETE RESTRICT
         ON UPDATE RESTRICT,
