@@ -1,0 +1,139 @@
+package roomescape.domain.reservation.service;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import roomescape.domain.reservation.entity.Reservation;
+import roomescape.domain.reservation.exception.DuplicateReservationException;
+import roomescape.domain.reservation.exception.PastReservationDateException;
+import roomescape.domain.reservation.exception.ReservationNotFoundException;
+import roomescape.domain.reservation.exception.ReservationOwnerMismatchException;
+import roomescape.domain.reservation.repository.ReservationRepository;
+import roomescape.domain.reservation.request.ReservationCreateRequest;
+import roomescape.domain.reservation.request.ReservationUpdateRequest;
+import roomescape.domain.reservation.response.ReservationResponse;
+import roomescape.domain.theme.entity.Theme;
+import roomescape.domain.theme.exception.ThemeNotFoundException;
+import roomescape.domain.theme.repository.ThemeRepository;
+import roomescape.domain.time.entity.ReservationTime;
+import roomescape.domain.time.exception.ReservationTimeNotFoundException;
+import roomescape.domain.time.repository.ReservationTimeRepository;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+
+@Service
+@Transactional(readOnly = true)
+public class ReservationService {
+
+    private final ReservationRepository reservationRepository;
+    private final ReservationTimeRepository reservationTimeRepository;
+    private final ThemeRepository themeRepository;
+    private final Clock clock;
+
+    public ReservationService(
+            ReservationRepository reservationRepository,
+            ReservationTimeRepository reservationTimeRepository,
+            ThemeRepository themeRepository, Clock clock
+    ) {
+        this.reservationRepository = reservationRepository;
+        this.reservationTimeRepository = reservationTimeRepository;
+        this.themeRepository = themeRepository;
+        this.clock = clock;
+    }
+
+    public List<ReservationResponse> findAllReservations() {
+        return reservationRepository.findAll().stream()
+                .map(ReservationResponse::from)
+                .toList();
+    }
+
+    public List<ReservationResponse> findReservationsByUsername(String username) {
+        return reservationRepository.findByUsername(username).stream()
+                .map(ReservationResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public ReservationResponse saveReservation(ReservationCreateRequest request) {
+        ReservationTime time = reservationTimeRepository.findById(request.timeId())
+                .orElseThrow(ReservationTimeNotFoundException::new);
+
+        validateReservationDateTimeIsNotPast(request.date(), time);
+
+        Theme theme = themeRepository.findById(request.themeId())
+                .orElseThrow(ThemeNotFoundException::new);
+
+        Reservation reservation = new Reservation(
+                request.username(),
+                theme,
+                request.date(),
+                time
+        );
+
+        if (reservationRepository.exists(reservation)) {
+            throw new DuplicateReservationException();
+        }
+
+        Reservation savedReservation = reservationRepository.save(reservation);
+
+        return ReservationResponse.from(savedReservation);
+    }
+
+    @Transactional
+    public void deleteReservationBy(Long id) {
+        reservationRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void cancelReservationBy(Long id, String username) {
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(ReservationNotFoundException::new);
+
+        if (!reservation.isOwnedBy(username)) {
+            throw new ReservationOwnerMismatchException();
+        }
+
+        reservationRepository.deleteById(id);
+    }
+
+    @Transactional
+    public ReservationResponse updateReservationSchedule(Long id, String username, ReservationUpdateRequest request) {
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(ReservationNotFoundException::new);
+
+        if (!reservation.isOwnedBy(username)) {
+            throw new ReservationOwnerMismatchException();
+        }
+
+        ReservationTime time = reservationTimeRepository.findById(request.timeId())
+                .orElseThrow(ReservationTimeNotFoundException::new);
+
+        validateReservationDateTimeIsNotPast(request.date(), time);
+
+        Reservation updatedReservation = new Reservation(
+                reservation.getId(),
+                reservation.getUsername(),
+                reservation.getTheme(),
+                request.date(),
+                time
+        );
+
+        if (!reservation.hasSameSchedule(request.date(), time) && reservationRepository.exists(updatedReservation)) {
+            throw new DuplicateReservationException();
+        }
+
+        return ReservationResponse.from(reservationRepository.update(updatedReservation));
+    }
+
+    private void validateReservationDateTimeIsNotPast(LocalDate date, ReservationTime time) {
+        if (date.isBefore(LocalDate.now(clock))) {
+           throw new PastReservationDateException();
+        }
+
+        if (date.isEqual(LocalDate.now(clock)) && time.isBefore(LocalTime.now(clock))) {
+            throw new PastReservationDateException();
+        }
+    }
+}
