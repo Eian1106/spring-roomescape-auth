@@ -6,7 +6,7 @@ const state = {
     selectedTimeId: null,
     reservationSort: "date",
     currentUserEmail: localStorage.getItem("roomescape.email") || "",
-    loggedIn: localStorage.getItem("roomescape.loggedIn") === "true",
+    accessToken: localStorage.getItem("roomescape.accessToken") || "",
     editingReservationId: null,
 };
 
@@ -71,11 +71,16 @@ async function loadAll() {
 }
 
 async function api(path, options = {}) {
+    const headers = {
+        "Content-Type": "application/json",
+        ...options.headers,
+    };
+    if (state.accessToken) {
+        headers.Authorization = `Bearer ${state.accessToken}`;
+    }
+
     const response = await fetch(path, {
-        headers: {
-            "Content-Type": "application/json",
-            ...options.headers,
-        },
+        headers,
         ...options,
     });
 
@@ -125,7 +130,7 @@ async function loadTimes() {
 }
 
 async function loadReservations() {
-    if (!state.loggedIn) {
+    if (!state.accessToken) {
         state.reservations = [];
         renderReservations();
         return;
@@ -253,7 +258,7 @@ function renderPopularPeriod() {
 }
 
 function renderReservations() {
-    if (!state.loggedIn) {
+    if (!state.accessToken) {
         $("#reservationList").innerHTML = emptyState("로그인 후 예약 내역을 확인하세요.");
         return;
     }
@@ -379,7 +384,7 @@ async function createReservation(event) {
     const form = event.currentTarget;
     const date = $("#dateInput").value;
 
-    if (!state.loggedIn) {
+    if (!state.accessToken) {
         openLoginDialog();
         showToast("로그인 후 예약할 수 있습니다.");
         return;
@@ -554,9 +559,14 @@ async function submitApiForm(event) {
     const startedAt = performance.now();
 
     try {
+        const headers = {"Content-Type": "application/json"};
+        if (state.accessToken) {
+            headers.Authorization = `Bearer ${state.accessToken}`;
+        }
+
         const response = await fetch(path, {
             method,
-            headers: {"Content-Type": "application/json"},
+            headers,
             ...(body ? {body: JSON.stringify(body)} : {}),
         });
         const text = await response.text();
@@ -643,14 +653,14 @@ async function login(event) {
     const formData = new FormData(form);
 
     try {
-        await api("/login", {
+        const response = await api("/login", {
             method: "POST",
             body: JSON.stringify({
                 email: formData.get("email"),
                 password: formData.get("password"),
             }),
         });
-        setLoginState(formData.get("email"));
+        setLoginState(formData.get("email"), response.accessToken);
         closeLoginDialog();
         showToast("로그인되었습니다.");
         await loadReservations();
@@ -700,27 +710,30 @@ async function logout() {
     showToast("로그아웃되었습니다.");
 }
 
-function setLoginState(email) {
-    state.loggedIn = true;
+function setLoginState(email, accessToken) {
     state.currentUserEmail = email;
+    state.accessToken = accessToken;
     localStorage.setItem("roomescape.loggedIn", "true");
     localStorage.setItem("roomescape.email", email);
+    localStorage.setItem("roomescape.accessToken", accessToken);
     renderAuthState();
 }
 
 function clearLoginState() {
-    state.loggedIn = false;
     state.currentUserEmail = "";
+    state.accessToken = "";
     localStorage.removeItem("roomescape.loggedIn");
     localStorage.removeItem("roomescape.email");
+    localStorage.removeItem("roomescape.accessToken");
 }
 
 function renderAuthState() {
-    $("#currentUserLabel").textContent = state.loggedIn
+    const loggedIn = Boolean(state.accessToken);
+    $("#currentUserLabel").textContent = loggedIn
         ? state.currentUserEmail || "로그인됨"
         : "로그인 필요";
-    $("#openLoginButton").classList.toggle("hidden", state.loggedIn);
-    $("#logoutButton").classList.toggle("hidden", !state.loggedIn);
+    $("#openLoginButton").classList.toggle("hidden", loggedIn);
+    $("#logoutButton").classList.toggle("hidden", !loggedIn);
 }
 
 function openLoginDialog() {
