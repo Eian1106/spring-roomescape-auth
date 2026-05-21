@@ -16,8 +16,11 @@ INSERT INTO reservation_time (start_at) VALUES ('13:00');
 INSERT INTO reservation_time (start_at) VALUES ('14:00');
 INSERT INTO reservation_time (start_at) VALUES ('15:00');
 
-INSERT INTO users (username, email, password) VALUES ('흑곰', 'bear@example.com', 'password');
-INSERT INTO users (username, email, password) VALUES ('브라운', 'brown@example.com', 'password');
+INSERT INTO store (name) VALUES ('강남점');
+INSERT INTO store (name) VALUES ('잠실점');
+
+INSERT INTO users (username, email, password, role, store_id) VALUES ('흑곰', 'bear@example.com', 'password', 'MANAGER', 1);
+INSERT INTO users (username, email, password, role, store_id) VALUES ('브라운', 'brown@example.com', 'password', 'MANAGER', 2);
 
 -- 2026-05-05에 '워너비'(ID 1) 테마 예약 (집계 대상)
 INSERT INTO reservation (username, theme_id, date, time_id) VALUES ('흑곰', 1, '2026-05-05', 1);
