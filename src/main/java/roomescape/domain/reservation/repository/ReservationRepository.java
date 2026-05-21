@@ -9,6 +9,8 @@ public interface ReservationRepository {
 
     List<Reservation> findAll();
 
+    List<Reservation> findByStoreId(Long storeId);
+
     List<Reservation> findByUserId(Long userId);
 
     Optional<Reservation> findById(Long id);

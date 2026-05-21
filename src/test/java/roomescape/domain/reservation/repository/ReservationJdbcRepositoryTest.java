@@ -144,6 +144,8 @@ class ReservationJdbcRepositoryTest {
     private long insertReservation(String username, long themeId, LocalDate date, long timeId) {
         SqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("username", username)
+                .addValue("user_id", null)
+                .addValue("store_id", 1L)
                 .addValue("theme_id", themeId)
                 .addValue("date", date)
                 .addValue("time_id", timeId);

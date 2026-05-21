@@ -13,6 +13,8 @@ public class Reservation {
 
     private final Long userId;
 
+    private final Long storeId;
+
     private final Theme theme;
 
     private final LocalDate date;
@@ -20,13 +22,18 @@ public class Reservation {
     private final ReservationTime time;
 
     public Reservation(Long id, String username, Theme theme, LocalDate date, ReservationTime time) {
-        this(id, username, null, theme, date, time);
+        this(id, username, null, 1L, theme, date, time);
     }
 
     public Reservation(Long id, String username, Long userId, Theme theme, LocalDate date, ReservationTime time) {
+        this(id, username, userId, 1L, theme, date, time);
+    }
+
+    public Reservation(Long id, String username, Long userId, Long storeId, Theme theme, LocalDate date, ReservationTime time) {
         this.id = id;
         this.username = username;
         this.userId = userId;
+        this.storeId = storeId;
         this.theme = theme;
         this.date = date;
         this.time = time;
@@ -37,7 +44,11 @@ public class Reservation {
     }
 
     public Reservation(String username, Long userId, Theme theme, LocalDate date, ReservationTime time) {
-        this(null, username, userId, theme, date, time);
+        this(null, username, userId, 1L, theme, date, time);
+    }
+
+    public Reservation(String username, Long userId, Long storeId, Theme theme, LocalDate date, ReservationTime time) {
+        this(null, username, userId, storeId, theme, date, time);
     }
 
     public Long getId() {
@@ -50,6 +61,10 @@ public class Reservation {
 
     public Long getUserId() {
         return userId;
+    }
+
+    public Long getStoreId() {
+        return storeId;
     }
 
     public Theme getTheme() {

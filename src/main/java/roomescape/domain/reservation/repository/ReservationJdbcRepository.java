@@ -25,6 +25,7 @@ public class ReservationJdbcRepository implements ReservationRepository {
                 r.id AS reservation_id,
                 r.username AS username,
                 r.user_id,
+                r.store_id,
                 r.date,
                 t.id AS theme_id,
                 t.name AS theme_name,
@@ -41,6 +42,10 @@ public class ReservationJdbcRepository implements ReservationRepository {
 
     private static final String FIND_RESERVATIONS_BY_USER_ID_QUERY = FIND_ALL_RESERVATIONS_WITH_TIME_QUERY + """
             WHERE r.user_id = :userId
+            """;
+
+    private static final String FIND_RESERVATIONS_BY_STORE_ID_QUERY = FIND_ALL_RESERVATIONS_WITH_TIME_QUERY + """
+            WHERE r.store_id = :storeId
             """;
 
     private static final String FIND_RESERVATION_BY_ID_QUERY = FIND_ALL_RESERVATIONS_WITH_TIME_QUERY + """
@@ -89,6 +94,18 @@ public class ReservationJdbcRepository implements ReservationRepository {
     }
 
     @Override
+    public List<Reservation> findByStoreId(Long storeId) {
+        SqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("storeId", storeId);
+
+        return jdbcTemplate.query(
+                FIND_RESERVATIONS_BY_STORE_ID_QUERY,
+                parameters,
+                reservationWithTimeRowMapper()
+        );
+    }
+
+    @Override
     public List<Reservation> findByUserId(Long userId) {
         SqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("userId", userId);
@@ -127,6 +144,7 @@ public class ReservationJdbcRepository implements ReservationRepository {
         SqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("username", reservation.getUsername())
                 .addValue("user_id", reservation.getUserId())
+                .addValue("store_id", reservation.getStoreId())
                 .addValue("theme_id", reservation.getTheme().getId())
                 .addValue("date", reservation.getDate())
                 .addValue("time_id", reservation.getTime().getId());
@@ -138,6 +156,7 @@ public class ReservationJdbcRepository implements ReservationRepository {
                 generatedId,
                 reservation.getUsername(),
                 reservation.getUserId(),
+                reservation.getStoreId(),
                 reservation.getTheme(),
                 reservation.getDate(),
                 reservation.getTime()
@@ -191,6 +210,7 @@ public class ReservationJdbcRepository implements ReservationRepository {
                 resultSet.getLong("reservation_id"),
                 resultSet.getString("username"),
                 resultSet.getObject("user_id", Long.class),
+                resultSet.getObject("store_id", Long.class),
                 new Theme(
                         resultSet.getLong("theme_id"),
                         resultSet.getString("theme_name"),
