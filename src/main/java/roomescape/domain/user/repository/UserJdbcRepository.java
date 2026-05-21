@@ -10,18 +10,19 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
 import roomescape.domain.user.entity.User;
+import roomescape.domain.user.entity.UserRole;
 
 @Repository
 public class UserJdbcRepository implements UserRepository {
 
     private static final String FIND_USER_BY_ID_QUERY = """
-            SELECT id, username, email, password
+            SELECT id, username, email, password, role, store_id
             FROM users
             WHERE id = :id
             """;
 
     private static final String FIND_USER_BY_EMAIL_QUERY = """
-            SELECT id, username, email, password
+            SELECT id, username, email, password, role, store_id
             FROM users
             WHERE email = :email
             """;
@@ -44,12 +45,21 @@ public class UserJdbcRepository implements UserRepository {
         SqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("username", user.getUsername())
                 .addValue("email", user.getEmail())
-                .addValue("password", user.getPassword());
+                .addValue("password", user.getPassword())
+                .addValue("role", user.getRole().name())
+                .addValue("store_id", user.getStoreId());
 
         Long generatedId = simpleJdbcInsert.executeAndReturnKey(parameters)
                 .longValue();
 
-        return new User(generatedId, user.getUsername(), user.getEmail(), user.getPassword());
+        return new User(
+                generatedId,
+                user.getUsername(),
+                user.getEmail(),
+                user.getPassword(),
+                user.getRole(),
+                user.getStoreId()
+        );
     }
 
     @Override
@@ -93,7 +103,9 @@ public class UserJdbcRepository implements UserRepository {
                 resultSet.getLong("id"),
                 resultSet.getString("username"),
                 resultSet.getString("email"),
-                resultSet.getString("password")
+                resultSet.getString("password"),
+                UserRole.valueOf(resultSet.getString("role")),
+                resultSet.getObject("store_id", Long.class)
         );
     }
 }
