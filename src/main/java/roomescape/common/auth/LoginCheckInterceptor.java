@@ -15,7 +15,7 @@ public class LoginCheckInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        if (!HttpMethod.GET.matches(request.getMethod()) && !HttpMethod.POST.matches(request.getMethod())) {
+        if (!isAdminReservationRequest(request) && !HttpMethod.GET.matches(request.getMethod()) && !HttpMethod.POST.matches(request.getMethod())) {
             return true;
         }
 
@@ -24,5 +24,9 @@ public class LoginCheckInterceptor implements HandlerInterceptor {
             return false;
         }
         return true;
+    }
+
+    private boolean isAdminReservationRequest(HttpServletRequest request) {
+        return request.getRequestURI().startsWith("/admin/reservations");
     }
 }

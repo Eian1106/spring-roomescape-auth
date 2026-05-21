@@ -25,7 +25,7 @@ public class AuthenticationPrincipalConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new LoginCheckInterceptor(tokenProvider))
-                .addPathPatterns("/reservations/**")
+                .addPathPatterns("/reservations/**", "/admin/reservations/**")
                 .excludePathPatterns(
                         "/login",
                         "/logout",

@@ -2,6 +2,7 @@ package roomescape.domain.reservation.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import roomescape.common.auth.ForbiddenException;
 import roomescape.domain.reservation.entity.Reservation;
 import roomescape.domain.reservation.exception.DuplicateReservationException;
 import roomescape.domain.reservation.exception.PastReservationDateException;
@@ -46,6 +47,12 @@ public class ReservationService {
 
     public List<ReservationResponse> findAllReservations() {
         return reservationRepository.findAll().stream()
+                .map(ReservationResponse::from)
+                .toList();
+    }
+
+    public List<ReservationResponse> findReservationsByManager(User manager) {
+        return reservationRepository.findByStoreId(manager.getStoreId()).stream()
                 .map(ReservationResponse::from)
                 .toList();
     }
@@ -95,6 +102,7 @@ public class ReservationService {
         Reservation reservation = new Reservation(
                 user.getUsername(),
                 user.getId(),
+                user.getStoreId(),
                 theme,
                 request.date(),
                 time
@@ -110,7 +118,43 @@ public class ReservationService {
     }
 
     @Transactional
+    public ReservationResponse saveReservationByManager(User manager, ReservationCreateRequest request) {
+        ReservationTime time = reservationTimeRepository.findById(request.timeId())
+                .orElseThrow(ReservationTimeNotFoundException::new);
+
+        validateReservationDateTimeIsNotPast(request.date(), time);
+
+        Theme theme = themeRepository.findById(request.themeId())
+                .orElseThrow(ThemeNotFoundException::new);
+
+        Reservation reservation = new Reservation(
+                request.username(),
+                null,
+                manager.getStoreId(),
+                theme,
+                request.date(),
+                time
+        );
+
+        if (reservationRepository.exists(reservation)) {
+            throw new DuplicateReservationException();
+        }
+
+        return ReservationResponse.from(reservationRepository.save(reservation));
+    }
+
+    @Transactional
     public void deleteReservationBy(Long id) {
+        reservationRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void deleteReservationByManager(User manager, Long id) {
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(ReservationNotFoundException::new);
+
+        validateManagerCanManage(manager, reservation);
+
         reservationRepository.deleteById(id);
     }
 
@@ -143,6 +187,8 @@ public class ReservationService {
         Reservation updatedReservation = new Reservation(
                 reservation.getId(),
                 reservation.getUsername(),
+                reservation.getUserId(),
+                reservation.getStoreId(),
                 reservation.getTheme(),
                 request.date(),
                 time
@@ -153,6 +199,45 @@ public class ReservationService {
         }
 
         return ReservationResponse.from(reservationRepository.update(updatedReservation));
+    }
+
+    @Transactional
+    public ReservationResponse updateReservationScheduleByManager(
+            User manager,
+            Long id,
+            ReservationUpdateRequest request
+    ) {
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(ReservationNotFoundException::new);
+
+        validateManagerCanManage(manager, reservation);
+
+        ReservationTime time = reservationTimeRepository.findById(request.timeId())
+                .orElseThrow(ReservationTimeNotFoundException::new);
+
+        validateReservationDateTimeIsNotPast(request.date(), time);
+
+        Reservation updatedReservation = new Reservation(
+                reservation.getId(),
+                reservation.getUsername(),
+                reservation.getUserId(),
+                reservation.getStoreId(),
+                reservation.getTheme(),
+                request.date(),
+                time
+        );
+
+        if (!reservation.hasSameSchedule(request.date(), time) && reservationRepository.exists(updatedReservation)) {
+            throw new DuplicateReservationException();
+        }
+
+        return ReservationResponse.from(reservationRepository.update(updatedReservation));
+    }
+
+    private void validateManagerCanManage(User manager, Reservation reservation) {
+        if (!manager.canManageStore(reservation.getStoreId())) {
+            throw new ForbiddenException();
+        }
     }
 
     private void validateReservationDateTimeIsNotPast(LocalDate date, ReservationTime time) {
