@@ -1,7 +1,6 @@
 package roomescape.common.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import org.springframework.core.MethodParameter;
 import org.springframework.lang.Nullable;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -13,12 +12,12 @@ import roomescape.domain.user.repository.UserRepository;
 
 public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver {
 
-    private static final String LOGIN_USER_ID = "loginUserId";
-
     private final UserRepository userRepository;
+    private final TokenProvider tokenProvider;
 
-    public LoginUserArgumentResolver(UserRepository userRepository) {
+    public LoginUserArgumentResolver(UserRepository userRepository, TokenProvider tokenProvider) {
         this.userRepository = userRepository;
+        this.tokenProvider = tokenProvider;
     }
 
     @Override
@@ -37,16 +36,8 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
                                   WebDataBinderFactory binderFactory) throws Exception {
 
         HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
-        HttpSession session = request.getSession(false);
-
-        if (session == null) {
-            throw new UnauthorizedException();
-        }
-
-        Long userId = (Long) session.getAttribute(LOGIN_USER_ID);
-        if (userId == null) {
-            throw new UnauthorizedException();
-        }
+        Long userId = tokenProvider.extractUserId(request)
+                .orElseThrow(UnauthorizedException::new);
 
         return userRepository.findById(userId)
                 .orElseThrow(UnauthorizedException::new);

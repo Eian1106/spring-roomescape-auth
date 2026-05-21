@@ -1,25 +1,25 @@
 package roomescape.domain.user.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import roomescape.common.auth.TokenProvider;
 import roomescape.domain.user.entity.User;
 import roomescape.domain.user.request.UserLoginRequest;
 import roomescape.domain.user.request.UserRegisterRequest;
+import roomescape.domain.user.response.UserLoginResponse;
 import roomescape.domain.user.service.UserService;
 
 @RestController
 public class UserController {
 
-    private static final String LOGIN_USER_ID = "loginUserId";
-
     private final UserService userService;
+    private final TokenProvider tokenProvider;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, TokenProvider tokenProvider) {
         this.userService = userService;
+        this.tokenProvider = tokenProvider;
     }
 
     @PostMapping("/signup")
@@ -29,24 +29,15 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Void> login(
-            @RequestBody UserLoginRequest request,
-            HttpServletRequest servletRequest
-    ) {
+    public ResponseEntity<UserLoginResponse> login(@RequestBody UserLoginRequest request) {
         User user = userService.login(request);
-        HttpSession session = servletRequest.getSession();
-        session.setAttribute(LOGIN_USER_ID, user.getId());
+        String accessToken = tokenProvider.createToken(user.getId());
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new UserLoginResponse(accessToken));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletRequest servletRequest) {
-        HttpSession session = servletRequest.getSession(false);
-        if (session != null) {
-            session.invalidate();
-        }
-
+    public ResponseEntity<Void> logout() {
         return ResponseEntity.noContent().build();
     }
 }

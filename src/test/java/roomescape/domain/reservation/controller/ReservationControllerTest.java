@@ -49,10 +49,10 @@ class ReservationControllerTest {
     @Test
     @DisplayName("로그인한 사용자는 본인의 예약 목록을 조회한다.")
     void findReservationsByLoginUser() {
-        String sessionId = login("bear@example.com", "password");
+        String accessToken = login("bear@example.com", "password");
 
         RestAssured.given().log().all()
-                .cookie("JSESSIONID", sessionId)
+                .header("Authorization", "Bearer " + accessToken)
                 .when().get("/reservations")
                 .then().log().all()
                 .statusCode(200)
@@ -71,7 +71,7 @@ class ReservationControllerTest {
     @Test
     @DisplayName("로그인한 사용자를 기준으로 예약을 생성한다.")
     void createReservation() {
-        String sessionId = login("bear@example.com", "password");
+        String accessToken = login("bear@example.com", "password");
 
         Map<String, Object> params = new HashMap<>();
         params.put("username", "새로운 사용자");
@@ -80,7 +80,7 @@ class ReservationControllerTest {
         params.put("timeId", 6);
 
         RestAssured.given().log().all()
-                .cookie("JSESSIONID", sessionId)
+                .header("Authorization", "Bearer " + accessToken)
                 .contentType(ContentType.JSON)
                 .body(params)
                 .when().post("/reservations")
@@ -109,8 +109,9 @@ class ReservationControllerTest {
                 .when().post("/login")
                 .then().log().all()
                 .statusCode(200)
+                .body("accessToken", notNullValue())
                 .extract()
-                .cookie("JSESSIONID");
+                .path("accessToken");
     }
 
     @Test
