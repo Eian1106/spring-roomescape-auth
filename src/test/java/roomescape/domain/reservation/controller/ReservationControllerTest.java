@@ -30,7 +30,10 @@ class ReservationControllerTest {
     @Test
     @DisplayName("예약 목록을 조회한다.")
     void findAllReservations() {
+        String accessToken = login("bear@example.com", "password");
+
         RestAssured.given().log().all()
+                .header("Authorization", "Bearer " + accessToken)
                 .when().get("/admin/reservations")
                 .then().log().all()
                 .statusCode(200)
@@ -44,6 +47,29 @@ class ReservationControllerTest {
                 .body("reservations[0].date", is("2026-05-05"))
                 .body("reservations[0].time.id", is(1))
                 .body("reservations[0].time.startAt", is("10:00"));
+    }
+
+    @Test
+    @DisplayName("인증하지 않은 매니저는 매장 예약 목록을 조회할 수 없다.")
+    void findAllReservations_throwsException_whenUnauthenticated() {
+        RestAssured.given().log().all()
+                .when().get("/admin/reservations")
+                .then().log().all()
+                .statusCode(401);
+    }
+
+    @Test
+    @DisplayName("매니저는 다른 매장의 예약을 삭제할 수 없다.")
+    void deleteAdminReservation_throwsException_whenStoreDoesNotMatch() {
+        String accessToken = login("brown@example.com", "password");
+
+        RestAssured.given().log().all()
+                .header("Authorization", "Bearer " + accessToken)
+                .when().delete("/admin/reservations/1")
+                .then().log().all()
+                .statusCode(403)
+                .body("code", is("FORBIDDEN"))
+                .body("message", is("권한이 없습니다."));
     }
 
     @Test

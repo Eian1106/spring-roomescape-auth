@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import roomescape.common.auth.ForbiddenException;
 import roomescape.domain.reservation.entity.Reservation;
 import roomescape.domain.reservation.exception.DuplicateReservationException;
 import roomescape.domain.reservation.exception.PastReservationDateException;
@@ -249,6 +250,27 @@ class ReservationServiceTest {
     }
 
     @Test
+    @DisplayName("매니저는 자기 매장의 예약 목록을 조회한다.")
+    void findReservationsByManager() {
+        // given
+        User manager = new User(1L, "브라운", "brown@example.com", "password");
+        Theme theme = new Theme(1L, "theme1", "description1", "thumbnail url 1");
+        ReservationTime time = new ReservationTime(1L, LocalTime.of(10, 0));
+        List<Reservation> reservations = List.of(
+                new Reservation(1L, "브라운", null, manager.getStoreId(), theme, LocalDate.of(2026, 4, 30), time)
+        );
+
+        when(reservationRepository.findByStoreId(manager.getStoreId())).thenReturn(reservations);
+
+        // when
+        List<ReservationResponse> responses = reservationService.findReservationsByManager(manager);
+
+        // then
+        assertThat(responses).hasSize(1);
+        verify(reservationRepository).findByStoreId(manager.getStoreId());
+    }
+
+    @Test
     @DisplayName("로그인 사용자 기준으로 예약 목록을 조회한다.")
     void findReservationsByUser() {
         // given
@@ -291,6 +313,26 @@ class ReservationServiceTest {
 
         // then
         verify(reservationRepository).deleteById(reservationId);
+    }
+
+    @Test
+    @DisplayName("매니저는 다른 매장의 예약을 삭제할 수 없다.")
+    void deleteReservationByManager_throwsException_whenStoreDoesNotMatch() {
+        // given
+        User manager = new User(1L, "브라운", "brown@example.com", "password");
+        Long reservationId = 1L;
+        Theme theme = new Theme(1L, "theme1", "description1", "thumbnail url 1");
+        ReservationTime time = new ReservationTime(1L, LocalTime.of(13, 0));
+        Reservation reservation = new Reservation(1L, "크루", null, 2L, theme, LocalDate.of(9999, 1, 1), time);
+
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+        // when & then
+        assertThatThrownBy(() -> reservationService.deleteReservationByManager(manager, reservationId))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("권한이 없습니다.");
+
+        verify(reservationRepository).findById(reservationId);
     }
 
     @Test
